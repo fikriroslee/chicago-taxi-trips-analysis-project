@@ -1,0 +1,44 @@
+config {
+    type: "view", // Creates a virtual table in BigQuery
+    schema: "staging", // Places the query results in the "staging" dataset in BigQuery
+    description: "Cleaned and filter taxi trips data" // Documents what this model (table/view) does
+}
+
+SELECT
+  unique_key,
+  taxi_id,
+  trip_start_timestamp,
+  trip_end_timestamp,
+  trip_seconds,
+  trip_miles,
+  fare,
+  tips,
+  tolls,
+  extras,
+  trip_total,
+  payment_type,
+  company,
+  pickup_census_tract,
+  dropoff_census_tract,
+  pickup_community_area,
+  dropoff_community_area,
+  -- Calculate trip duration in hours
+  trip_seconds / 3600 AS trip_hours,
+  -- Extract date components
+  DATE(trip_start_timestamp) AS trip_date,
+  EXTRACT(DAYOFWEEK FROM trip_start_timestamp) AS day_of_week,
+  EXTRACT(MONTH FROM trip_start_timestamp) AS trip_month,
+  EXTRACT(YEAR FROM trip_start_timestamp) AS trip_year
+FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+WHERE
+  -- Filter for data quality
+  taxi_id IS NOT NULL
+  AND trip_start_timestamp IS NOT NULL
+  AND trip_end_timestamp IS NOT NULL
+  AND trip_seconds > 0
+  AND trip_miles > 0
+  AND fare >= 0
+  AND tips >= 0
+  -- Use data from 2023 (most recent complete year)
+  AND trip_start_timestamp >= '2023-01-01'
+  AND trip_start_timestamp < '2024-01-01'
