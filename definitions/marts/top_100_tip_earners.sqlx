@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    schema: "marts",
+    description: "Top 100 taxi IDs by tips earned in Q4 of 2023 (last 3 months of available data)"
+}
+
+SELECT
+  taxi_id,
+  COUNT(*) AS total_trips,
+  ROUND(SUM(tips), 2) AS total_tips,
+  ROUND(AVG(tips), 2) AS avg_tip_per_trip,
+  ROUND(SUM(fare), 2) AS total_fare,
+  ROUND(SUM(tips) / SUM(fare) * 100, 2) AS tip_percentage,
+  ROUND(SUM(trip_miles), 2) AS total_miles,
+  ROUND(AVG(trip_miles), 2) AS avg_miles_per_trip
+FROM
+  ${ref("staging_taxi_trips")}
+WHERE
+  -- Last 3 months of available data (Q4 of 2023)
+  trip_start_timestamp >= '2023-10-01'
+  AND trip_start_timestamp < '2024-01-01'
+GROUP BY
+  taxi_id
+ORDER BY
+  total_tips DESC
+LIMIT 100
