@@ -4,7 +4,8 @@ config {
     description: "Top 100 overworked taxi IDs without taking 8 hour breaks in Q4 of 2023 (last 3 months of available data)"
 }
 
--- Analyses taxi trip patterns by calculating the gap between consecutive trips for each taxi
+-- Initialising Common Table Expressions (CTEs)
+-- CTE 1: Analyses taxi trip patterns by calculating the gap between consecutive trips for each taxi
 WITH trip_sequences AS (
   SELECT
     taxi_id,
@@ -25,3 +26,28 @@ WITH trip_sequences AS (
     trip_start_timestamp >= '2023-10-01'
     AND trip_start_timestamp < '2024-01-01'
 ),
+
+-- CTE 2: Analyses taxis with insufficient breaks and long shifts
+shifts_without_break AS (
+  SELECT
+    taxi_id,
+    trip_start_timestamp,
+    trip_end_timestamp,
+    trip_hours,
+    hours_until_next_trip,
+    trip_date,
+    -- Flag if break is less than 8 hours
+    CASE 
+      WHEN hours_until_next_trip < 8 AND hours_until_next_trip IS NOT NULL 
+      THEN 1 
+      ELSE 0 
+    END as insufficient_break,
+    -- Flag long shifts (over 10 hours)
+    CASE 
+      WHEN trip_hours > 10 
+      THEN 1 
+      ELSE 0 
+    END as long_shift
+  FROM
+    trip_sequences
+)
