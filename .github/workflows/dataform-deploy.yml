@@ -13,14 +13,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Mock authentication for interview exercise
+      - name: Authenticate to Google Cloud (mock)
+        run: |
+          echo "Skipping real GCP authentication for this exercise"
       
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+        run: |
+          echo "Cloud SDK setup skipped (mock)"
       
       - name: Validate Dataform configuration
         run: |
