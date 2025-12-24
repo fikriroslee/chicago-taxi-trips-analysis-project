@@ -1,0 +1,37 @@
+config {
+    type: "table",
+    schema: "marts",
+    description: "Analysis of trip patterns on US holidays vs regular days (2021-2023)"
+}
+
+-- Initialising Common Table Expressions (CTEs)
+-- CTE 1: Define major US holidays for 2021-2023
+WITH us_holidays AS (
+    SELECT
+        holiday_date,
+        holiday_name
+    FROM UNNEST([
+        --  2023 holidays
+        STRUCT(DATE '2023-01-01' AS holiday_date, 'New Year' AS holiday_name),
+        STRUCT(DATE '2023-01-02', 'New Year (Observed)'),
+        STRUCT(DATE '2023-07-04', 'Independence Day'),
+        STRUCT(DATE '2023-11-23', 'Thanksgiving'),
+        STRUCT(DATE '2023-11-24', 'Day After Thanksgiving'),
+        STRUCT(DATE '2023-12-25', 'Christmas'),
+        -- 2022 holidays
+        STRUCT(DATE '2022-01-01', 'New Year'),
+        STRUCT(DATE '2022-07-04', 'Independence Day'),
+        STRUCT(DATE '2022-11-24', 'Thanksgiving'),
+        STRUCT(DATE '2022-11-25', 'Day After Thanksgiving'),
+        STRUCT(DATE '2022-12-25', 'Christmas'),
+        STRUCT(DATE '2022-12-26', 'Christmas (Observed)'),
+        -- 2021 holidays
+        STRUCT(DATE '2021-01-01', 'New Year'),
+        STRUCT(DATE '2021-07-04', 'Independence Day'),
+        STRUCT(DATE '2021-07-05', 'Independence Day (Observed)'),
+        STRUCT(DATE '2021-11-25', 'Thanksgiving'),
+        STRUCT(DATE '2021-11-26', 'Day After Thanksgiving'),
+        STRUCT(DATE '2021-12-24', 'Christmas Eve'),
+        STRUCT(DATE '2021-12-25', 'Christmas')
+    ])
+),
