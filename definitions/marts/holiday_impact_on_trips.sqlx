@@ -1,0 +1,92 @@
+config {
+    type: "table",
+    schema: "marts",
+    description: "Analysis of trip patterns on US holidays vs regular days (2021-2023)"
+}
+
+-- Initialising Common Table Expressions (CTEs)
+-- CTE 1: Define major US holidays for 2021-2023
+WITH us_holidays AS (
+    SELECT
+        holiday_date,
+        holiday_name
+    FROM UNNEST([
+        --  2023 holidays
+        STRUCT(DATE '2023-01-01' AS holiday_date, 'New Year' AS holiday_name),
+        STRUCT(DATE '2023-01-02', 'New Year (Observed)'),
+        STRUCT(DATE '2023-07-04', 'Independence Day'),
+        STRUCT(DATE '2023-11-23', 'Thanksgiving'),
+        STRUCT(DATE '2023-11-24', 'Day After Thanksgiving'),
+        STRUCT(DATE '2023-12-25', 'Christmas'),
+        -- 2022 holidays
+        STRUCT(DATE '2022-01-01', 'New Year'),
+        STRUCT(DATE '2022-07-04', 'Independence Day'),
+        STRUCT(DATE '2022-11-24', 'Thanksgiving'),
+        STRUCT(DATE '2022-11-25', 'Day After Thanksgiving'),
+        STRUCT(DATE '2022-12-25', 'Christmas'),
+        STRUCT(DATE '2022-12-26', 'Christmas (Observed)'),
+        -- 2021 holidays
+        STRUCT(DATE '2021-01-01', 'New Year'),
+        STRUCT(DATE '2021-07-04', 'Independence Day'),
+        STRUCT(DATE '2021-07-05', 'Independence Day (Observed)'),
+        STRUCT(DATE '2021-11-25', 'Thanksgiving'),
+        STRUCT(DATE '2021-11-26', 'Day After Thanksgiving'),
+        STRUCT(DATE '2021-12-24', 'Christmas Eve'),
+        STRUCT(DATE '2021-12-25', 'Christmas')
+    ])
+),
+
+-- CTE 2: Checks for holiday dates from 2021-2023 and displays trip analytics
+daily_metrics AS (
+  SELECT
+    trip_date,
+    CASE 
+      WHEN trip_date IN (SELECT holiday_date FROM us_holidays) THEN TRUE 
+      ELSE FALSE 
+    END AS is_holiday,
+    h.holiday_name,
+    COUNT(*) AS trip_count,
+    ROUND(AVG(fare), 2) AS avg_fare,
+    ROUND(AVG(tips), 2) AS avg_tips,
+    ROUND(AVG(trip_miles), 2) as avg_miles,
+    ROUND(SUM(fare), 2) AS total_fare,
+    ROUND(SUM(tips), 2) AS total_tips
+  FROM
+    ${ref("staging_taxi_trips")} AS t
+  LEFT JOIN
+    us_holidays AS h ON t.trip_date = h.holiday_date
+  GROUP BY
+    trip_date, is_holiday, holiday_name
+),
+
+-- CTE 3: Showcase averages for non-hilday trips, fares, and tips
+comparison_metrics AS (
+  SELECT
+    AVG(CASE WHEN is_holiday = FALSE THEN trip_count END) AS avg_non_holiday_trips,
+    AVG(CASE WHEN is_holiday = FALSE THEN avg_fare END) AS avg_non_holiday_fare,
+    AVG(CASE WHEN is_holiday = FALSE THEN avg_tips END) AS avg_non_holiday_tips
+  FROM daily_metrics
+)
+
+-- Main query: Showcase trip impacts during holidays from 2021-2023 vs regular days
+SELECT
+  dm.trip_date,
+  dm.is_holiday,
+  dm.holiday_name,
+  dm.trip_count,
+  dm.avg_fare,
+  dm.avg_tips,
+  dm.avg_miles,
+  dm.total_fare,
+  dm.total_tips,
+  -- Compare to average non-holiday
+  ROUND(dm.trip_count - cm.avg_non_holiday_trips, 2) AS trip_count_vs_avg,
+  ROUND((dm.trip_count - cm.avg_non_holiday_trips) / cm.avg_non_holiday_trips * 100, 2) as trip_count_pct_change,
+  ROUND(dm.avg_fare - cm.avg_non_holiday_fare, 2) AS fare_vs_avg,
+  ROUND(dm.avg_tips - cm.avg_non_holiday_tips, 2) AS tips_vs_avg
+FROM
+  daily_metrics AS dm
+CROSS JOIN
+  comparison_metrics AS cm
+ORDER BY
+  dm.trip_date DESC
