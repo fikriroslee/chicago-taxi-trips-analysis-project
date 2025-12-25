@@ -5,7 +5,7 @@ config {
 }
 
 -- Initialising Common Table Expressions (CTEs)
--- CTE 1: Define major US holidays for 2021-2023
+-- CTE 1: Define major US holidays for 2023
 WITH us_holidays AS (
     SELECT
         holiday_date,
@@ -17,26 +17,11 @@ WITH us_holidays AS (
         STRUCT(DATE '2023-07-04', 'Independence Day'),
         STRUCT(DATE '2023-11-23', 'Thanksgiving'),
         STRUCT(DATE '2023-11-24', 'Day After Thanksgiving'),
-        STRUCT(DATE '2023-12-25', 'Christmas'),
-        -- 2022 holidays
-        STRUCT(DATE '2022-01-01', 'New Year'),
-        STRUCT(DATE '2022-07-04', 'Independence Day'),
-        STRUCT(DATE '2022-11-24', 'Thanksgiving'),
-        STRUCT(DATE '2022-11-25', 'Day After Thanksgiving'),
-        STRUCT(DATE '2022-12-25', 'Christmas'),
-        STRUCT(DATE '2022-12-26', 'Christmas (Observed)'),
-        -- 2021 holidays
-        STRUCT(DATE '2021-01-01', 'New Year'),
-        STRUCT(DATE '2021-07-04', 'Independence Day'),
-        STRUCT(DATE '2021-07-05', 'Independence Day (Observed)'),
-        STRUCT(DATE '2021-11-25', 'Thanksgiving'),
-        STRUCT(DATE '2021-11-26', 'Day After Thanksgiving'),
-        STRUCT(DATE '2021-12-24', 'Christmas Eve'),
-        STRUCT(DATE '2021-12-25', 'Christmas')
+        STRUCT(DATE '2023-12-25', 'Christmas')
     ])
 ),
 
--- CTE 2: Checks for holiday dates from 2021-2023 and displays trip analytics
+-- CTE 2: Checks for holiday dates for 2023 and displays trip analytics
 daily_metrics AS (
   SELECT
     trip_date,
@@ -68,7 +53,7 @@ comparison_metrics AS (
   FROM daily_metrics
 )
 
--- Main query: Showcase trip impacts during holidays from 2021-2023 vs regular days
+-- Main query: Showcase trip impacts during holidays for 2023 vs regular days
 SELECT
   dm.trip_date,
   dm.is_holiday,
