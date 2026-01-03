@@ -74,3 +74,29 @@ trip_metric_averages AS (
     FROM daily_classified_metrics
     GROUP BY day_type
 )
+
+-- Main Query: Showcase holiday vs weekend impact on trips in 2023
+SELECT
+    dcm.trip_date,
+    dcm.is_weekend,
+    dcm.is_holiday,
+    dcm.day_type,
+    dcm.holiday_name,
+    dcm.trip_count,
+    dcm.avg_trip_miles,
+    dcm.total_fare,
+    dcm.avg_fare,
+    dcm.total_tips,
+    dcm.avg_tips,
+    -- Compare to average of trip metrics by day_type
+    ROUND(dcm.trip_count - tma.avg_trip_count_by_day_type, 2) AS trip_count_per_day_vs_avg_trip_count_by_day_type,
+    ROUND((dcm.trip_count - tma.avg_trip_count_by_day_type) / tma.avg_trip_count_by_day_type * 100, 2) AS trip_count_pct_change,
+    ROUND(dcm.avg_fare - tma.avg_fare_by_day_type, 2) AS avg_fare_per_day_vs_avg_fare_by_day_type,
+    ROUND(dcm.avg_tips - tma.avg_tips_by_day_type, 2) AS avg_tips_per_day_vs_avg_tips_by_day_type
+FROM
+    daily_classified_metrics AS dcm
+INNER JOIN
+    trip_metric_averages AS tma
+        ON dcm.day_type = tma.day_type
+ORDER BY
+    dcm.trip_date DESC
