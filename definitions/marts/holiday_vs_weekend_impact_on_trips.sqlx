@@ -20,3 +20,46 @@ WITH us_holidays AS (
         STRUCT(DATE '2023-12-25', 'Christmas')
     ])
 ),
+
+-- CTE 2a: Flag holidays and weekends in 2023
+daily_with_flags AS (
+    SELECT
+        stt.*,
+        CASE
+            WHEN day_of_week  IN (1, 7) THEN TRUE
+            ELSE FALSE
+        END AS is_weekend,
+        CASE
+            WHEN trip_date IN (SELECT holiday_date FROM us_holidays) THEN TRUE
+            ELSE FALSE
+        END AS is_holiday,
+        ush.holiday_name
+    FROM
+        ${ref('staging_taxi_trips')} AS stt
+    LEFT JOIN
+        us_holidays AS ush
+            ON stt.trip_date = ush.holiday_date
+),
+
+-- CTE 2b: Flag regular/holiday weekdays/weekends in 2023
+daily_classified_metrics AS (
+    SELECT
+        trip_date,
+        is_weekend,
+        is_holiday,
+        holiday_name,
+        CASE
+            WHEN is_holiday = TRUE AND is_weekend = TRUE THEN 'Holiday Weekend'
+            WHEN is_holiday = TRUE AND is_weekend = FALSE THEN 'Holiday Weekday'
+            WHEN is_holiday = FALSE AND is_weekend = TRUE THEN 'Regular Weekend'
+            WHEN is_holiday = FALSE AND is_weekend = FALSE THEN 'Regular Weekday'
+        END AS day_type,
+        COUNT(*) AS trip_count,
+        ROUND(AVG(trip_miles), 2) AS avg_trip_miles,
+        ROUND(SUM(fare), 2) AS total_fare,
+        ROUND(AVG(fare), 2) AS avg_fare,
+        ROUND(SUM(tips), 2) AS total_tips,
+        ROUND(AVG(tips), 2) AS avg_tips
+    FROM daily_with_flags
+    GROUP BY trip_date, is_weekend, is_holiday, holiday_name, day_type
+),
