@@ -63,3 +63,14 @@ daily_classified_metrics AS (
     FROM daily_with_flags
     GROUP BY trip_date, is_weekend, is_holiday, holiday_name, day_type
 ),
+
+-- CTE 3: Calculate average of trip metrics by day_type
+trip_metric_averages AS (
+    SELECT
+        day_type,
+        ROUND(AVG(trip_count), 0) AS avg_trip_count_by_day_type,
+        ROUND(AVG(avg_fare), 2) AS avg_fare_by_day_type,
+        ROUND(AVG(avg_tips), 2) AS avg_tips_by_day_type
+    FROM daily_classified_metrics
+    GROUP BY day_type
+)
