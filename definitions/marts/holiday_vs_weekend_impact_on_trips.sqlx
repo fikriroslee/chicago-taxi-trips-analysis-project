@@ -1,0 +1,22 @@
+config {
+    type: "table",
+    schema: "marts",
+    description: "Analysis of trip patterns on US holidays vs weekends"
+}
+
+-- Initialising Common Table Expressions (CTEs)
+-- CTE 1: Define major US holidays for 2023
+WITH us_holidays AS (
+    SELECT
+        holiday_date,
+        holiday_name
+    FROM UNNEST([
+        -- 2023 holidays
+        STRUCT(DATE '2023-01-01' AS holiday_date, 'New Year' AS holiday_name),
+        STRUCT(DATE '2023-01-02', 'New Year (Observed)'),
+        STRUCT(DATE '2023-07-04', 'Independence Day'),
+        STRUCT(DATE '2023-11-23', 'Thanksgiving'),
+        STRUCT(DATE '2023-11-24', 'Day After Thanksgiving'),
+        STRUCT(DATE '2023-12-25', 'Christmas')
+    ])
+),
