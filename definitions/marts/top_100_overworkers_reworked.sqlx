@@ -1,0 +1,81 @@
+config {
+    type: "table",
+    schema: "marts",
+    description: "Top 100 overworked taxi IDs without taking 8 hour breaks in Q4 of 2023 (last 3 months of available data)"
+}
+
+-- Initialising Common Table Expressions (CTEs)
+-- CTE 1: Define daily shifts per taxi
+WITH daily_shifts AS (
+    SELECT
+        taxi_id,
+        trip_date,
+        MIN(trip_start_timestamp) AS shift_start,
+        MAX(trip_end_timestamp) AS shift_end,
+        COUNT(*) AS num_of_trips_during_shift,
+        SUM(trip_hours) AS total_driving_hours, -- Actual time with passengers
+        TIMESTAMP_DIFF(
+            MAX(trip_end_timestamp),
+            MIN(trip_start_timestamp),
+            HOUR
+        ) AS shift_duration_in_hours -- Total working hours (includes idle time)
+    FROM ${ref("staging_taxi_trips")}
+    WHERE
+        trip_start_timestamp >= '2023-10-01'
+        AND trip_start_timestamp < '2024-01-01'
+    GROUP BY taxi_id, trip_date
+),
+
+-- CTE 2: Calculate rest time between shifts
+shifts_with_breaks AS (
+    SELECT
+        *,
+        TIMESTAMP_DIFF(
+            LEAD(shift_start) OVER (PARTITION BY taxi_id ORDER BY trip_date),
+            shift_end,
+            HOUR
+        ) AS hours_until_next_shift,
+        -- Flag insufficient rest
+        CASE
+            WHEN TIMESTAMP_DIFF(
+                LEAD(shift_start) OVER (PARTITION BY taxi_id ORDER BY trip_date),
+                shift_end,
+                HOUR
+            ) < 8 AND TIMESTAMP_DIFF(
+                LEAD(shift_start) OVER (PARTITION BY taxi_id ORDER BY trip_date),
+                shift_end,
+                HOUR
+            ) IS NOT NULL
+            THEN 1
+            ELSE 0
+        END AS insufficient_rest,
+        -- Flag excessively long shifts
+        CASE
+            WHEN shift_duration_in_hours > 12
+            THEN 1
+            ELSE 0
+        END AS excessive_shift_duration
+    FROM daily_shifts
+)
+
+-- Main Query: Identify top 100 overworkers (aggregate by driver)
+SELECT
+    taxi_id,
+    COUNT(DISTINCT trip_date) AS days_worked,
+    SUM(num_of_trips_during_shift) AS total_trips_from_all_shifts,
+    ROUND(SUM(shift_duration_in_hours), 2) AS total_working_hours_from_all_shifts,
+    ROUND(AVG(shift_duration_in_hours), 2) AS avg_shift_duration_in_hours,
+    ROUND(SUM(total_driving_hours), 2) AS total_driving_hours,
+    SUM(insufficient_rest) AS shifts_without_8hr_rest,
+    SUM(excessive_shift_duration) AS shifts_over_12hrs,
+    ROUND(SUM(insufficient_rest) / COUNT(*) * 100, 2) AS pct_insufficient_rest,
+    MAX(shift_duration_in_hours) AS longest_shift_in_hours
+FROM shifts_with_breaks
+GROUP BY taxi_id
+HAVING
+    shifts_without_8hr_rest >= 10
+    OR shifts_over_12hrs >= 5
+ORDER BY
+    shifts_without_8hr_rest DESC,
+    total_working_hours_from_all_shifts DESC
+LIMIT 100
